@@ -1,6 +1,8 @@
 import os
 import re
 import secrets
+import sqlite3
+from contextlib import contextmanager
 from functools import lru_cache
 import json
 from io import BytesIO
@@ -60,10 +62,28 @@ app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
 _database_initialized = False
 
 
+def database_backend() -> str:
+    configured_backend = os.environ.get("DB_BACKEND", "").strip().casefold()
+    if configured_backend in {"sqlite", "postgres", "postgresql"}:
+        return "postgres" if configured_backend == "postgresql" else configured_backend
+    if configured_backend:
+        raise RuntimeError("DB_BACKEND must be 'sqlite' or 'postgres'.")
+
+    value = os.environ.get("DATABASE_URL", "")
+    if value:
+        scheme = urlsplit(value).scheme
+        if scheme in {"postgres", "postgresql"}:
+            return "postgres"
+        if scheme == "sqlite":
+            return "sqlite"
+        raise RuntimeError("DATABASE_URL must use a PostgreSQL or SQLite URL.")
+    return "sqlite"
+
+
 def database_url() -> str:
     value = os.environ.get("DATABASE_URL")
     if not value:
-        raise RuntimeError("DATABASE_URL is not set. Add it to the environment or .env file.")
+        raise RuntimeError("DATABASE_URL is required when DB_BACKEND is postgres.")
     parsed = urlsplit(value)
     if parsed.scheme not in {"postgres", "postgresql"} or not parsed.hostname:
         raise RuntimeError("DATABASE_URL must be a valid PostgreSQL connection URL.")
@@ -73,8 +93,49 @@ def database_url() -> str:
     return urlunsplit(parsed._replace(query=urlencode(query)))
 
 
+def sqlite_database_path() -> Path:
+    configured_path = os.environ.get("SQLITE_DATABASE_PATH")
+    if configured_path:
+        path = Path(configured_path).expanduser()
+        if not path.is_absolute():
+            path = BASE_DIR / path
+    elif os.environ.get("DATABASE_URL", "").startswith("sqlite:"):
+        path = Path(urlsplit(os.environ["DATABASE_URL"]).path)
+    else:
+        path = BASE_DIR / "instance" / "stagefinder.sqlite3"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def db_execute(connection, statement: str, parameters: tuple = ()):
+    if database_backend() == "sqlite":
+        statement = statement.replace("%s", "?")
+    return connection.execute(statement, parameters)
+
+
+def json_database_value(value: dict):
+    if database_backend() == "sqlite":
+        return json.dumps(value, ensure_ascii=False)
+    return Jsonb(value)
+
+
+@contextmanager
 def get_db_connection():
-    return psycopg.connect(database_url(), row_factory=dict_row)
+    if database_backend() == "sqlite":
+        connection = sqlite3.connect(sqlite_database_path())
+        connection.row_factory = sqlite3.Row
+        try:
+            yield connection
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+        return
+
+    with psycopg.connect(database_url(), row_factory=dict_row) as connection:
+        yield connection
 
 
 def initialize_database() -> None:
@@ -82,16 +143,19 @@ def initialize_database() -> None:
     if _database_initialized:
         return
     with get_db_connection() as connection:
-        connection.execute(
-            """
+        profile_column = "TEXT NOT NULL DEFAULT '{}'" if database_backend() == "sqlite" else "JSONB NOT NULL DEFAULT '{}'::jsonb"
+        saved_column = "INTEGER NOT NULL DEFAULT 0" if database_backend() == "sqlite" else "BOOLEAN NOT NULL DEFAULT FALSE"
+        db_execute(
+            connection,
+            f"""
             CREATE TABLE IF NOT EXISTS stagefinder_users (
                 email TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 password_hash TEXT NOT NULL,
-                profile JSONB NOT NULL DEFAULT '{}'::jsonb,
-                profile_saved BOOLEAN NOT NULL DEFAULT FALSE
+                profile {profile_column},
+                profile_saved {saved_column}
             )
-            """
+            """,
         )
     _database_initialized = True
 
@@ -131,7 +195,8 @@ def current_account() -> dict | None:
         g.stagefinder_account = None
         return None
     with get_db_connection() as connection:
-        g.stagefinder_account = connection.execute(
+        account = db_execute(
+            connection,
             """
             SELECT email, name, password_hash, profile, profile_saved
             FROM stagefinder_users
@@ -139,6 +204,12 @@ def current_account() -> dict | None:
             """,
             (email,),
         ).fetchone()
+    if account is not None:
+        g.stagefinder_account = dict(account)
+        if isinstance(g.stagefinder_account["profile"], str):
+            g.stagefinder_account["profile"] = json.loads(g.stagefinder_account["profile"])
+    else:
+        g.stagefinder_account = None
     return g.stagefinder_account
 
 
@@ -434,14 +505,15 @@ def signup():
         profile.update({"first_name": first_name, "last_name": last_name, "email": email})
         try:
             with get_db_connection() as connection:
-                connection.execute(
+                db_execute(
+                    connection,
                     """
                     INSERT INTO stagefinder_users (email, name, password_hash, profile)
                     VALUES (%s, %s, %s, %s)
                     """,
-                    (email, name, generate_password_hash(password), Jsonb(profile)),
+                    (email, name, generate_password_hash(password), json_database_value(profile)),
                 )
-        except UniqueViolation:
+        except (UniqueViolation, sqlite3.IntegrityError):
             flash("Un compte existe déjà avec cette adresse e-mail.", "error")
             return redirect(url_for("auth", next=next_url) + "#signup")
         session.clear()
@@ -463,7 +535,8 @@ def login():
     email = request.form.get("email", "").strip().casefold()
     password = request.form.get("password", "")
     with get_db_connection() as connection:
-        account = connection.execute(
+        account = db_execute(
+            connection,
             """
             SELECT email, name, password_hash, profile, profile_saved
             FROM stagefinder_users
@@ -533,13 +606,14 @@ def save_profile():
         flash("Saisis une adresse e-mail valide.", "error")
     else:
         with get_db_connection() as connection:
-            connection.execute(
+            db_execute(
+                connection,
                 """
                 UPDATE stagefinder_users
                 SET profile = %s, profile_saved = TRUE
                 WHERE email = %s
                 """,
-                (Jsonb(profile), account["email"]),
+                (json_database_value(profile), account["email"]),
             )
         flash(f"Ton profil est prêt, {profile['first_name']} ! Il reste disponible dans cette session.", "success")
     return redirect(url_for("profile_page"))

@@ -5,3 +5,7 @@
 __pycache__/
 *.py[cod]
 /GooglePlacesAPIs_Exemple.ipynb
+instance/
+*.sqlite3
+stager_scraping.py
+likedin_scraping.py
