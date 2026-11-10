@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Découvre et filtre les offres de stage au Maroc avec StageFinder Maroc.">
+  <title>Offres de stage · StageFinder Maroc</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <div class="site-shell">
+    {% include "_header.html" %}
+    <main>
+      <section id="home" class="hero">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="live-dot"></span>{{ internships|length }} opportunités repérées</div>
+          <h1>Le début de ta carrière <span class="highlight">commence ici.</span></h1>
+          <p>Trouve un stage qui te ressemble. Explore les offres au Maroc et découvre où les compétences de demain sont recherchées.</p>
+          <a class="hero-cta" href="#offres">Explorer les stages</a>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <div class="visual-kicker">TA PROCHAINE ÉTAPE</div>
+          <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit orbit-three"></div>
+          <div class="visual-star">✳</div><div class="visual-word">stage</div>
+          <div class="visual-caption">→ expérience → avenir</div><div class="visual-stamp">MAROC · 2026</div>
+        </div>
+      </section>
+
+      <section class="metrics-row" aria-label="Chiffres clés">
+        {% for value, label, note in metrics %}
+        <div class="metric-card">
+          <div class="metric-value">{{ value }}</div>
+          <div class="metric-label">{{ label }}</div>
+          <div class="metric-note">{{ note }}</div>
+        </div>
+        {% endfor %}
+      </section>
+
+      <section id="offres" class="offers-section">
+        <div class="section-heading">
+          <div>
+            <div class="section-kicker">LE PROCHAIN PAS</div>
+            <h2>Des stages à ta portée</h2>
+            <p>Filtre les offres et trouve celle qui correspond à ton projet.</p>
+          </div>
+          <div class="results-badge" id="results-count" aria-live="polite">{{ internships|length }} offre{% if internships|length != 1 %}s{% endif %} dans les données</div>
+        </div>
+
+        <div class="filters">
+          <input class="search-input" id="search-input" type="search" placeholder="Poste, entreprise, compétence…" aria-label="Rechercher une offre">
+          <select class="filter-dropdown" id="city-filter" aria-label="Filtrer par ville">
+            <option value="">Toutes les villes</option>
+            {% for city in city_options %}<option value="{{ city }}" {% if request.args.get('city') == city %}selected{% endif %}>{{ city }}</option>{% endfor %}
+          </select>
+          <select class="filter-dropdown" id="category-filter" aria-label="Filtrer par domaine">
+            <option value="">Tous les domaines</option>
+            {% for category in category_options %}<option value="{{ category }}" {% if request.args.get('category') == category %}selected{% endif %}>{{ category }}</option>{% endfor %}
+          </select>
+        </div>
+
+        <div class="internship-grid" id="internship-grid">
+          {% for job in internships %}
+          <article class="internship-card"
+                   data-city="{{ job.city }}"
+                   data-category="{{ job.category }}"
+                   data-search="{{ job.title }} {{ job.company }} {{ job.city }} {{ job.description }} {{ job.skills }} {{ job.category }}">
+            <div class="card-topline">
+              <span class="category-tag">{{ job.category }}</span>
+              <span class="posted-date">{{ job.date_label }}</span>
+            </div>
+            <h3 class="internship-title">{{ job.title }}</h3>
+            <div class="company-location">{{ job.company }} · {{ job.city }}</div>
+            <p class="internship-description">{{ job.excerpt }}</p>
+            <div class="card-footer">
+              <span class="source-label">{{ job.source }} · {{ job.contract }}</span>
+              {% if job.url %}<a class="apply-link" href="{{ job.url }}" target="_blank" rel="noopener noreferrer">Voir l’offre ↗</a>
+              {% else %}<span class="no-link">Lien de candidature indisponible</span>{% endif %}
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+        <div class="empty-state" id="empty-state" {% if internships %}hidden{% endif %}>
+          <div class="empty-title">Aucune offre pour ces filtres.</div>
+          <p>Essaie une autre ville, un autre domaine ou un mot-clé.</p>
+        </div>
+      </section>
+    </main>
+    {% include "_footer.html" %}
+  </div>
+</body>
+</html>

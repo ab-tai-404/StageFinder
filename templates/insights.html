@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Explore les tendances des stages et l'écosystème professionnel au Maroc.">
+  <title>Explorer les données · StageFinder Maroc</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <div class="site-shell">
+    {% include "_header.html" %}
+    <main class="page-main">
+      <section class="page-heading">
+        <div class="section-kicker">LES DONNÉES, EN CLAIR</div>
+        <h1>Comprendre le marché avant de choisir</h1>
+        <p>Explore les stages publiés, les domaines recherchés et les établissements référencés à Marrakech.</p>
+      </section>
+
+      <section class="metrics-row insights-metrics" aria-label="Chiffres clés">
+        {% for value, label, note in metrics %}
+        <div class="metric-card">
+          <div class="metric-value">{{ value }}</div>
+          <div class="metric-label">{{ label }}</div>
+          <div class="metric-note">{{ note }}</div>
+        </div>
+        {% endfor %}
+      </section>
+
+      <section class="insights-section insights-page-section">
+        <div class="chart-grid">
+          <div class="panel"><div id="city-chart" class="chart" role="img" aria-label="Offres de stage par ville"></div></div>
+          <div class="panel"><div id="category-chart" class="chart" role="img" aria-label="Offres par domaine"></div></div>
+          {% if business_counts %}
+          <div class="panel panel-wide"><div id="business-chart" class="chart" role="img" aria-label="Établissements référencés par catégorie à Marrakech"></div></div>
+          {% endif %}
+        </div>
+        <div class="data-note">Les chiffres reflètent les fichiers de données présents dans le projet. Les liens d’offre renvoient vers leurs sources d’origine.</div>
+      </section>
+
+      {% if businesses_count %}
+      <section class="local-insight">
+        <div class="section-kicker">ÉCOSYSTÈME LOCAL</div>
+        <div class="local-number">{{ "{:,}".format(businesses_count).replace(",", " ") }}</div>
+        <div class="metric-label">établissements référencés à Marrakech</div>
+        <p>Note moyenne renseignée : <strong>{{ "%.1f"|format(average_rating) }}/5</strong></p>
+      </section>
+      {% endif %}
+    </main>
+    {% include "_footer.html" %}
+  </div>
+  <script id="chart-data" type="application/json">{{ chart_data|tojson }}</script>
+</body>
+</html>

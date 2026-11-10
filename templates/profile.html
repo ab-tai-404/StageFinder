@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Crée ton profil stagiaire sur StageFinder Maroc.">
+  <title>Mon profil stagiaire · StageFinder Maroc</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <div class="site-shell">
+    {% include "_header.html" %}
+    <main class="page-main">
+      <section class="page-heading">
+        <div class="section-kicker">TON ESPACE STAGIAIRE</div>
+        <h1>Crée ton profil</h1>
+        <p>Présente ton parcours et précise le stage que tu recherches.</p>
+      </section>
+
+      <section class="profile-section">
+        <div class="profile-intro">
+          <div>
+            <h2>Ton parcours, tes objectifs</h2>
+            <p>Complète tes informations pour préparer un profil clair pour les recruteurs.</p>
+          </div>
+          <div class="profile-progress-card">
+            <div class="progress-copy"><span>Profil complété</span><strong id="profile-completion">{{ profile_completion }}%</strong></div>
+            <div class="progress-track"><span id="profile-progress" style="width: {{ profile_completion }}%"></span></div>
+            <div class="progress-note">Ton profil est enregistré avec ton compte.</div>
+          </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+            <div class="notice notice-{{ category }}" role="status">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% if current_user %}
+        <form class="profile-form" action="{{ url_for('save_profile') }}" method="post" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="form-heading">Informations personnelles</div>
+          <div class="form-grid">
+            <label>Prénom *<input name="first_name" required value="{{ profile.first_name }}" placeholder="Ex. Salma"></label>
+            <label>Nom de famille *<input name="last_name" required value="{{ profile.last_name }}" placeholder="Ex. El Amrani"></label>
+            <label>Adresse e-mail *<input type="email" name="email" required value="{{ profile.email }}" placeholder="salma@email.com"></label>
+            <label>Téléphone<input type="tel" name="phone" value="{{ profile.phone }}" placeholder="+212 6 00 00 00 00"></label>
+            <label>Ville de résidence
+              <select name="city">
+                {% for city in residence_cities %}<option value="{{ city }}" {% if profile.city == city %}selected{% endif %}>{{ city }}</option>{% endfor %}
+              </select>
+            </label>
+            <label>Niveau d'études
+              <select name="education">
+                {% for education in education_options %}<option value="{{ education }}" {% if profile.education == education %}selected{% endif %}>{{ education }}</option>{% endfor %}
+              </select>
+            </label>
+          </div>
+
+          <div class="form-heading form-heading-spaced">Études et recherche de stage</div>
+          <div class="form-grid">
+            <label>École ou université<input name="school" value="{{ profile.school }}" placeholder="Nom de votre établissement"></label>
+            <label>Filière / spécialité<input name="specialty" value="{{ profile.specialty }}" placeholder="Ex. Data Science"></label>
+            <label>Type de stage recherché
+              <select name="internship_type">
+                {% for internship_type in internship_types %}<option value="{{ internship_type }}" {% if profile.internship_type == internship_type %}selected{% endif %}>{{ internship_type }}</option>{% endfor %}
+              </select>
+            </label>
+            <label>Ville souhaitée
+              <select name="target_city">
+                {% for city in target_city_options %}<option value="{{ city }}" {% if profile.target_city == city %}selected{% endif %}>{{ city }}</option>{% endfor %}
+              </select>
+            </label>
+            <label>Disponibilité<input name="availability" value="{{ profile.availability }}" placeholder="Ex. À partir de juin 2027"></label>
+            <label>Compétences<input name="skills" value="{{ profile.skills }}" placeholder="Ex. Python, Excel, communication"></label>
+            <label class="form-full">À propos de vous<textarea name="about" rows="4" placeholder="Présentez-vous en quelques lignes et dites ce que vous recherchez.">{{ profile.about }}</textarea></label>
+            <label class="form-full">CV (facultatif)<input type="file" name="cv_file" accept=".pdf,.doc,.docx"><span class="field-help">Le fichier n'est pas conservé ; seul son nom est ajouté au profil exportable.</span></label>
+          </div>
+          <button class="primary-button" type="submit">Enregistrer mon profil</button>
+        </form>
+
+        {% if has_profile %}
+        <div class="profile-actions">
+          <a class="secondary-button" href="{{ url_for('download_profile') }}">Télécharger mon profil (JSON)</a>
+          <a class="primary-button" href="{{ url_for('index', city=profile.target_city, category=profile_category) }}">Voir les offres correspondant à mon profil</a>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="auth-prompt">
+          <p>Connecte-toi ou crée un compte pour enregistrer ton profil stagiaire.</p>
+          <a class="primary-button" href="{{ url_for('auth') }}">Connexion / Inscription</a>
+        </div>
+        {% endif %}
+      </section>
+    </main>
+    {% include "_footer.html" %}
+  </div>
+</body>
+</html>

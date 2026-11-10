@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connexion · StageFinder Maroc</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <div class="auth-page">
+    <header class="site-header">
+      <a class="brand" href="{{ url_for('index') }}"><span class="brand-mark">S</span><span>Stage<strong>Finder</strong></span></a>
+      <nav class="main-nav" aria-label="Navigation principale">
+        <a href="{{ url_for('index') }}">Trouver un stage</a>
+        <a href="{{ url_for('profile_page') }}">Créer mon profil</a>
+        <a href="{{ url_for('insights_page') }}">Explorer les données</a>
+      </nav>
+    </header>
+
+    <main class="auth-card">
+      <div class="section-kicker">TON ESPACE STAGIAIRE</div>
+      <h1>Bienvenue sur StageFinder</h1>
+      <p class="auth-description">Connecte-toi ou crée un compte pour accéder aux offres, à ton profil et aux données du marché.</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+          <div class="notice notice-{{ category }}" role="status">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <div class="auth-tabs" role="tablist" aria-label="Connexion ou inscription">
+        <button class="auth-tab" type="button" id="login-tab" role="tab" aria-controls="login-panel">Connexion</button>
+        <button class="auth-tab" type="button" id="signup-tab" role="tab" aria-controls="signup-panel">Inscription</button>
+      </div>
+
+      <section id="login-panel" class="auth-panel">
+        <h2>Se connecter</h2>
+        <form action="{{ url_for('login') }}" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="next" value="{{ next_url }}">
+          <label>Adresse e-mail
+            <input type="email" name="email" required autocomplete="email" placeholder="toi@email.com">
+          </label>
+          <label>Mot de passe
+            <input type="password" name="password" required autocomplete="current-password">
+          </label>
+          <button class="primary-button" type="submit">Connexion</button>
+        </form>
+      </section>
+
+      <section id="signup-panel" class="auth-panel">
+        <h2>Créer un compte</h2>
+        <form action="{{ url_for('signup') }}" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="next" value="{{ next_url }}">
+          <label>Nom complet
+            <input name="name" required minlength="2" autocomplete="name" placeholder="Ex. Salma El Amrani">
+          </label>
+          <label>Adresse e-mail
+            <input type="email" name="email" required autocomplete="email" placeholder="toi@email.com">
+          </label>
+          <label>Mot de passe <span class="field-help">8 caractères minimum</span>
+            <input type="password" name="password" required minlength="8" autocomplete="new-password">
+          </label>
+          <label>Confirmer le mot de passe
+            <input type="password" name="confirm_password" required minlength="8" autocomplete="new-password">
+          </label>
+          <button class="primary-button" type="submit">Créer mon compte</button>
+        </form>
+      </section>
+      <p class="auth-storage-note">Mode démonstration : les comptes et profils sont temporaires et supprimés au redémarrage du serveur.</p>
+    </main>
+  </div>
+</body>
+</html>

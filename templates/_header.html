@@ -1,0 +1,19 @@
+<header class="site-header">
+  <a class="brand" href="{{ url_for('index') }}"><span class="brand-mark">S</span><span>Stage<strong>Finder</strong></span></a>
+  <nav class="main-nav" aria-label="Navigation principale">
+    <a class="{% if active_page == 'offers' %}active{% endif %}" href="{{ url_for('index') }}">Trouver un stage</a>
+    <a class="{% if active_page == 'profile' %}active{% endif %}" href="{{ url_for('profile_page') }}">Créer mon profil</a>
+    <a class="{% if active_page == 'insights' %}active{% endif %}" href="{{ url_for('insights_page') }}">Explorer les données</a>
+  </nav>
+  {% if current_user %}
+  <div class="account-nav">
+    <span>{{ current_user.name }}</span>
+    <form action="{{ url_for('logout') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="header-cta" type="submit">Déconnexion</button>
+    </form>
+  </div>
+  {% else %}
+  <a class="header-cta" href="{{ url_for('auth') }}">Connexion / Inscription</a>
+  {% endif %}
+</header>
